@@ -3,14 +3,15 @@ import dotenv from 'dotenv';
 import { Client, Databases, ID, Query } from 'node-appwrite';
 import cors from 'cors';
 
-// Load environment variables
+
 dotenv.config();
+
 
 // Initialize Appwrite client
 const client = new Client()
-    .setEndpoint(process.env.APPWRITE_ENDPOINT)
-    .setProject(process.env.APPWRITE_PROJECT_ID)
-    .setKey(process.env.APPWRITE_API_KEY);
+  .setEndpoint(process.env.APPWRITE_ENDPOINT)
+  .setProject(process.env.APPWRITE_PROJECT_ID)
+  .setKey(process.env.APPWRITE_API_KEY);
 
 const databases = new Databases(client);
 
@@ -55,25 +56,25 @@ app.post('/track', async (req, res) => {
 
 
 app.post('/script', async (req, res) => {
-    const { userId, scriptName } = req.body;
+  const { userId, scriptName } = req.body;
 
-    if (!userId || !scriptName) {
-        return res.status(400).json({ error: 'userId and scriptName are required' });
-    }
+  if (!userId || !scriptName) {
+    return res.status(400).json({ error: 'userId and scriptName are required' });
+  }
 
-    try {
-        // Generate a unique scriptId
-        const scriptId = ID.unique();
+  try {
+    // Generate a unique scriptId
+    const scriptId = ID.unique();
 
-        // Generate the tracking script
-        const script = `
+    // Generate the tracking script
+    const script = `
       <script>
         (function() {
           const scriptId = "${scriptId}";
           const userId = "${userId}";
           const ipAddress = window.location.hostname;
 
-          fetch('http://localhost:3000/track', {
+          fetch('https://visitloggerbackend.vercel.app/track', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -91,47 +92,48 @@ app.post('/script', async (req, res) => {
       </script>
     `;
 
-        // Save script metadata
-        await databases.createDocument(
-            process.env.APPWRITE_DATABASE_ID,
-            process.env.APPWRITE_SCRIPTS_COLLECTION_ID,
-            scriptId,
-            { userId, scriptName, scriptId, script }
-        );
+    // Save script metadata
+    await databases.createDocument(
+      process.env.APPWRITE_DATABASE_ID,
+      process.env.APPWRITE_SCRIPTS_COLLECTION_ID,
+      scriptId,
+      { userId, scriptName, scriptId, script }
+    );
 
-        // Send the response
-        res.status(200).json({ script, scriptId, scriptName, userId });
-    } catch (error) {
-        console.error('Error creating script:', error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
+    // Send the response
+    res.status(200).json({ script, scriptId, scriptName, userId });
+  } catch (error) {
+    console.error('Error creating script:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 
 // Get analytics for a specific script
 app.get('/analytics/:scriptId', async (req, res) => {
-    const { scriptId } = req.params;
+  const { scriptId } = req.params;
 
-    if (!scriptId) {
-        return res.status(400).json({ error: 'scriptId is required' });
-    }
+  if (!scriptId) {
+    return res.status(400).json({ error: 'scriptId is required' });
+  }
 
-    try {
-        const data = await databases.listDocuments(
-            process.env.APPWRITE_DATABASE_ID,
-            process.env.APPWRITE_COLLECTION_ID,
-            [Query.equal('scriptId', scriptId)]
-        );
+  try {
+    const data = await databases.listDocuments(
+      process.env.APPWRITE_DATABASE_ID,
+      process.env.APPWRITE_COLLECTION_ID,
+      [Query.equal('scriptId', scriptId)]
+    );
 
-        res.status(200).json(data.documents);
-    } catch (error) {
-        console.error('Error fetching analytics:', error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
+    res.status(200).json(data.documents);
+  } catch (error) {
+    console.error('Error fetching analytics:', error.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
+
 app.get('/', async (req, res) => {
-  
+
   // Send a simple HTML response
   res.send(`
     <!DOCTYPE html>
@@ -154,5 +156,5 @@ app.get('/', async (req, res) => {
 
 // Start the server
 app.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}`);
+  console.log(`Server running on http://localhost:${port}`);
 });
