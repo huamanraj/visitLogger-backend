@@ -1,0 +1,53 @@
+.env 
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Build and output directories
+dist/
+build/
+public/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+
+# Test coverage reports
+coverage/
+
+# Temporary files
+tmp/
+temp/
+
+# Optional npm cache directory
+.npm
+
+# Optional yarn cache directory
+.yarn
+.yarnrc.yml
+
+
