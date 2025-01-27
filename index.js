@@ -130,6 +130,26 @@ app.get('/analytics/:scriptId', async (req, res) => {
     }
 });
 
+app.get('/', async (req, res) => {
+  
+  // Send a simple HTML response
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Visit Logger</title>
+      </head>
+      <body>
+        <h1>Welcome to the Visit Logger Backend!</h1>
+        <p>You have reached the home page of the backend. This is just a simple message.</p>
+                <p>For more information, visit my <a href="https://aman-raj.xyz" target="_blank">contact page</a>.</p>
+
+      </body>
+    </html>
+  `);
+});
 
 
 // Start the server
