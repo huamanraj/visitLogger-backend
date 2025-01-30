@@ -68,8 +68,8 @@ app.post('/script', async (req, res) => {
     const script = `
       <script>
   (function() {
-    const scriptId = "<SCRIPT_ID>";
-    const userId = "<USER_ID>";
+    const scriptId = "${scriptId}";
+    const userId = "${userId}";
     const ipAddress = window.location.hostname;
     const startTime = Date.now();
 
