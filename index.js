@@ -27,13 +27,18 @@ app.use(express.json());
 
 // API endpoint to track user data
 app.post('/track', async (req, res) => {
-  const { scriptId, userId, ipAddress, timestamp, userAgent, timeSpent, city, latitude, longitude } = req.body;
+  let { scriptId, userId, ipAddress, timestamp, userAgent, timeSpent, city, latitude, longitude } = req.body;
 
   if (!scriptId || !userId || !ipAddress || !timestamp || !userAgent || timeSpent === undefined) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
   try {
+    // Ensure values are strings
+    timeSpent = timeSpent ? timeSpent.toString() : "0";
+    latitude = latitude ? latitude.toString() : "0";
+    longitude = longitude ? longitude.toString() : "0";
+
     await databases.createDocument(
       process.env.APPWRITE_DATABASE_ID,
       process.env.APPWRITE_COLLECTION_ID,
@@ -47,6 +52,7 @@ app.post('/track', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
 
 
 
@@ -69,16 +75,20 @@ app.get('/track.js', async (req, res) => {
         try {
           const response = await fetch("https://ipapi.co/json/");
           const data = await response.json();
-          return { city: data.city, latitude: data.latitude, longitude: data.longitude };
+          return { 
+            city: data.city || "Unknown", 
+            latitude: data.latitude ? data.latitude.toString() : "0", 
+            longitude: data.longitude ? data.longitude.toString() : "0" 
+          };
         } catch (error) {
           console.error("Error fetching location:", error);
-          return { city: null, latitude: null, longitude: null };
+          return { city: "Unknown", latitude: "0", longitude: "0" };
         }
       }
 
       window.addEventListener("beforeunload", async function() {
         const endTime = Date.now();
-        const timeSpent = (endTime - startTime) / 1000;
+        const timeSpent = ((endTime - startTime) / 1000).toFixed(2); // Convert to string with 2 decimals
         const { city, latitude, longitude } = await getLocation();
 
         fetch("http://localhost:3000/track", {
@@ -90,7 +100,7 @@ app.get('/track.js', async (req, res) => {
             ipAddress,
             timestamp: new Date().toISOString(),
             userAgent: navigator.userAgent,
-            timeSpent,
+            timeSpent: timeSpent.toString(),
             city,
             latitude,
             longitude
@@ -104,6 +114,7 @@ app.get('/track.js', async (req, res) => {
 
 
 
+
 app.post('/script', async (req, res) => {
   const { userId, scriptName } = req.body;
 
@@ -112,19 +123,23 @@ app.post('/script', async (req, res) => {
   }
 
   try {
+ 
+  
     // Generate a unique scriptId
     const scriptId = ID.unique();
+
+    // Generate the script URL
+    const scriptUrl = `https://visitloggerbackend.vercel.app/track.js?scriptId=${scriptId}&userId=${userId}`;
+
+    
 
     // Save script metadata in Appwrite
     await databases.createDocument(
       process.env.APPWRITE_DATABASE_ID,
       process.env.APPWRITE_SCRIPTS_COLLECTION_ID,
       scriptId,
-      { userId, scriptName, scriptId }
+      { userId, scriptName, scriptId, scriptUrl }
     );
-
-    // Generate the script URL instead of full script
-    const scriptUrl = `https://visitloggerbackend.vercel.app/track.js?scriptId=${scriptId}&userId=${userId}`;
 
     // Send the response with script URL
     res.status(200).json({ scriptUrl, scriptId, scriptName, userId });
@@ -133,6 +148,7 @@ app.post('/script', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
 
 
 // Get analytics for a specific script
@@ -150,12 +166,17 @@ app.get('/analytics/:scriptId', async (req, res) => {
       [Query.equal('scriptId', scriptId)]
     );
 
+    if (data.documents.length === 0) {
+      return res.status(404).json({ message: 'No data found for the given scriptId' });
+    }
+
     res.status(200).json(data.documents);
   } catch (error) {
     console.error('Error fetching analytics:', error.message);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
 
 
 app.get('/', async (req, res) => {
