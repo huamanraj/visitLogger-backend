@@ -80,7 +80,7 @@ app.get('/track.js', async (req, res) => {
       const userId = "${userId}";
       const ipAddress = window.location.hostname;
       const startTime = Date.now();
-
+      console.log("beforeunload triggered11");
       async function getLocation() {
         try {
           const response = await fetch("https://ipapi.co/json/");
@@ -95,12 +95,12 @@ app.get('/track.js', async (req, res) => {
           return { city: "Unknown", latitude: "0", longitude: "0" };
         }
       }
-
+      console.log("beforeunload triggered22");
       window.addEventListener("beforeunload", async function() {
         const endTime = Date.now();
         const timeSpent = ((endTime - startTime) / 1000).toFixed(2); // Convert to string with 2 decimals
         const { city, latitude, longitude } = await getLocation();
-
+      console.log("beforeunload triggered2235");
         fetch("https://visitloggerbackend.vercel.app/track", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
