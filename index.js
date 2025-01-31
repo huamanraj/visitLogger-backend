@@ -29,6 +29,8 @@ app.use(express.json());
 app.post('/track', async (req, res) => {
   let { scriptId, userId, ipAddress, timestamp, userAgent, timeSpent, city, latitude, longitude } = req.body;
 
+  console.log('Tracking Data:', req.body);
+
   if (!scriptId || !userId || !ipAddress || !timestamp || !userAgent || timeSpent === undefined) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
@@ -91,7 +93,7 @@ app.get('/track.js', async (req, res) => {
         const timeSpent = ((endTime - startTime) / 1000).toFixed(2); // Convert to string with 2 decimals
         const { city, latitude, longitude } = await getLocation();
 
-        fetch("http://localhost:3000/track", {
+        fetch("https://visitloggerbackend.vercel.app/track", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -100,10 +102,10 @@ app.get('/track.js', async (req, res) => {
             ipAddress,
             timestamp: new Date().toISOString(),
             userAgent: navigator.userAgent,
-            timeSpent: timeSpent.toString(),
-            city,
-            latitude,
-            longitude
+            timeSpent: timeSpent.toString(),    
+            city: String(city),                
+            latitude: String(latitude),        
+            longitude: String(longitude) 
           })
         }).catch(console.error);
       });
@@ -123,15 +125,15 @@ app.post('/script', async (req, res) => {
   }
 
   try {
- 
-  
+
+
     // Generate a unique scriptId
     const scriptId = ID.unique();
 
     // Generate the script URL
     const scriptUrl = `https://visitloggerbackend.vercel.app/track.js?scriptId=${scriptId}&userId=${userId}`;
 
-    
+
 
     // Save script metadata in Appwrite
     await databases.createDocument(
