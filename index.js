@@ -35,25 +35,34 @@ app.use((req, res, next) => {
 
 // API endpoint to track user data
 app.post('/track', async (req, res) => {
-  let { scriptId, userId, ipAddress, timestamp, userAgent, timeSpent, city, latitude, longitude } = req.body;
-
-  console.log('Tracking Data:', req.body);
+  let { scriptId, userId, ipAddress, timestamp, userAgent, timeSpent, city, latitude, longitude, pageViews } = req.body;
 
   if (!scriptId || !userId || !ipAddress || !timestamp || !userAgent || timeSpent === undefined) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
   try {
-    // Ensure values are strings
     timeSpent = timeSpent ? timeSpent.toString() : "0";
     latitude = latitude ? latitude.toString() : "0";
     longitude = longitude ? longitude.toString() : "0";
+    pageViews = pageViews ? pageViews.toString() : "1"; // Handle pageViews
 
     await databases.createDocument(
       process.env.APPWRITE_DATABASE_ID,
       process.env.APPWRITE_COLLECTION_ID,
       ID.unique(),
-      { scriptId, userId, ipAddress, timestamp, userAgent, timeSpent, city, latitude, longitude }
+      {
+        scriptId,
+        userId,
+        ipAddress,
+        timestamp,
+        userAgent,
+        timeSpent,
+        city,
+        latitude,
+        longitude,
+        pageViews 
+      }
     );
 
     res.status(200).json({ message: 'Tracking data saved successfully' });
@@ -80,42 +89,48 @@ app.get('/track.js', async (req, res) => {
       const userId = "${userId}";
       const ipAddress = window.location.hostname;
       const startTime = Date.now();
-      console.log("beforeunload triggered11");
-      async function getLocation() {
+      let locationData = { city: "Unknown", latitude: "0", longitude: "0" };
+      let pageViews = 1; // Initialize pageViews
+
+      // Fetch location data immediately when script loads
+      async function initializeLocation() {
         try {
           const response = await fetch("https://ipapi.co/json/");
           const data = await response.json();
-          return { 
-            city: data.city || "Unknown", 
-            latitude: data.latitude ? data.latitude.toString() : "0", 
-            longitude: data.longitude ? data.longitude.toString() : "0" 
+          locationData = {
+            city: data.city || "Unknown",
+            latitude: data.latitude ? data.latitude.toString() : "0",
+            longitude: data.longitude ? data.longitude.toString() : "0"
           };
         } catch (error) {
           console.error("Error fetching location:", error);
-          return { city: "Unknown", latitude: "0", longitude: "0" };
         }
       }
-      console.log("beforeunload triggered22");
-      window.addEventListener("beforeunload", async function() {
+
+      // Initialize location data when script loads
+      initializeLocation();
+
+      window.addEventListener("beforeunload", function() {
         const endTime = Date.now();
-        const timeSpent = ((endTime - startTime) / 1000).toFixed(2); // Convert to string with 2 decimals
-        const { city, latitude, longitude } = await getLocation();
-      console.log("beforeunload triggered2235");
-        fetch("https://visitloggerbackend.vercel.app/track", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            scriptId,
-            userId,
-            ipAddress,
-            timestamp: new Date().toISOString(),
-            userAgent: navigator.userAgent,
-            timeSpent: timeSpent.toString(),    
-            city: String(city),                
-            latitude: String(latitude),        
-            longitude: String(longitude) 
-          })
-        }).catch(console.error);
+        const timeSpent = ((endTime - startTime) / 1000).toFixed(2);
+
+        const data = {
+          scriptId,
+          userId,
+          ipAddress,
+          timestamp: new Date().toISOString(),
+          userAgent: navigator.userAgent,
+          timeSpent: timeSpent.toString(),
+          city: locationData.city,
+          latitude: locationData.latitude,
+          longitude: locationData.longitude,
+          pageViews: pageViews.toString() // Add pageViews to the data
+        };
+
+        navigator.sendBeacon(
+          "https://visitloggerbackend.vercel.app/track",
+          JSON.stringify(data)
+        );
       });
     })();
   `);
