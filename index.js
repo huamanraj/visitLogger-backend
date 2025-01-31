@@ -40,7 +40,7 @@ app.post('/track', async (req, res) => {
       ID.unique(),
       { scriptId, userId, ipAddress, timestamp, userAgent, timeSpent, city, latitude, longitude }
     );
-    
+
     res.status(200).json({ message: 'Tracking data saved successfully' });
   } catch (error) {
     console.error('Error saving tracking data:', error);
@@ -49,6 +49,57 @@ app.post('/track', async (req, res) => {
 });
 
 
+
+app.get('/track.js', async (req, res) => {
+  const { scriptId, userId } = req.query;
+
+  if (!scriptId || !userId) {
+    return res.status(400).send("// Missing scriptId or userId");
+  }
+
+  res.setHeader("Content-Type", "application/javascript");
+  res.send(`
+    (function() {
+      const scriptId = "${scriptId}";
+      const userId = "${userId}";
+      const ipAddress = window.location.hostname;
+      const startTime = Date.now();
+
+      async function getLocation() {
+        try {
+          const response = await fetch("https://ipapi.co/json/");
+          const data = await response.json();
+          return { city: data.city, latitude: data.latitude, longitude: data.longitude };
+        } catch (error) {
+          console.error("Error fetching location:", error);
+          return { city: null, latitude: null, longitude: null };
+        }
+      }
+
+      window.addEventListener("beforeunload", async function() {
+        const endTime = Date.now();
+        const timeSpent = (endTime - startTime) / 1000;
+        const { city, latitude, longitude } = await getLocation();
+
+        fetch("http://localhost:3000/track", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            scriptId,
+            userId,
+            ipAddress,
+            timestamp: new Date().toISOString(),
+            userAgent: navigator.userAgent,
+            timeSpent,
+            city,
+            latitude,
+            longitude
+          })
+        }).catch(console.error);
+      });
+    })();
+  `);
+});
 
 
 
@@ -64,62 +115,19 @@ app.post('/script', async (req, res) => {
     // Generate a unique scriptId
     const scriptId = ID.unique();
 
-    // Generate the tracking script
-    const script = `
-      <script>
-  (function() {
-    const scriptId = "${scriptId}";
-    const userId = "${userId}";
-    const ipAddress = window.location.hostname;
-    const startTime = Date.now();
-
-    async function getLocation() {
-      try {
-        const response = await fetch("https://ipapi.co/json/");
-        const data = await response.json();
-        return { city: data.city, latitude: data.latitude, longitude: data.longitude };
-      } catch (error) {
-        console.error("Error fetching location:", error);
-        return { city: null, latitude: null, longitude: null };
-      }
-    }
-
-    window.addEventListener("beforeunload", async function() {
-      const endTime = Date.now();
-      const timeSpent = (endTime - startTime) / 1000; // Convert ms to seconds
-      const { city, latitude, longitude } = await getLocation();
-
-      fetch("https://visitloggerbackend.vercel.app/track", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          scriptId,
-          userId,
-          ipAddress,
-          timestamp: new Date().toISOString(),
-          userAgent: navigator.userAgent,
-          timeSpent,
-          city,
-          latitude,
-          longitude
-        })
-      }).catch(console.error);
-    });
-  })();
-</script>
-
-    `;
-
-    // Save script metadata
+    // Save script metadata in Appwrite
     await databases.createDocument(
       process.env.APPWRITE_DATABASE_ID,
       process.env.APPWRITE_SCRIPTS_COLLECTION_ID,
       scriptId,
-      { userId, scriptName, scriptId, script }
+      { userId, scriptName, scriptId }
     );
 
-    // Send the response
-    res.status(200).json({ script, scriptId, scriptName, userId });
+    // Generate the script URL instead of full script
+    const scriptUrl = `https://visitloggerbackend.vercel.app/track.js?scriptId=${scriptId}&userId=${userId}`;
+
+    // Send the response with script URL
+    res.status(200).json({ scriptUrl, scriptId, scriptName, userId });
   } catch (error) {
     console.error('Error creating script:', error);
     res.status(500).json({ error: 'Internal server error' });
