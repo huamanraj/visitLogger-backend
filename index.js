@@ -2,8 +2,10 @@ import express from 'express';
 import dotenv from 'dotenv';
 import { Client, Databases, ID, Query } from 'node-appwrite';
 import cors from 'cors';
+import moment from 'moment';
 
 dotenv.config();
+
 
 // Initialize Appwrite client
 const client = new Client()
@@ -167,6 +169,50 @@ app.get('/analytics/:scriptId', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+app.get('/analytics/graph/:scriptId', async (req, res) => {
+  const { scriptId } = req.params;
+  const { days = 1 } = req.query;
+
+  if (!scriptId) {
+    return res.status(400).json({ error: 'scriptId is required' });
+  }
+
+  try {
+    const daysAgo = moment().subtract(days, 'days').toISOString();
+
+    const data = await databases.listDocuments(
+      process.env.APPWRITE_DATABASE_ID,
+      process.env.APPWRITE_COLLECTION_ID,
+      [
+        Query.equal('scriptId', scriptId),
+        Query.orderDesc('$createdAt'),
+        Query.greaterThan('$createdAt', daysAgo),
+      ]
+    );
+
+    // Group by day and count visitors
+    const groupedData = data.documents.reduce((acc, entry) => {
+      const date = new Date(entry.timestamp).toLocaleDateString();
+      acc[date] = (acc[date] || 0) + 1;
+      return acc;
+    }, {});
+
+    // Prepare the response with just the day and count of visitors
+    const result = Object.keys(groupedData).map(date => ({
+      date,
+      count: groupedData[date],
+    }));
+
+    res.status(200).json({
+      graphData: result,
+    });
+  } catch (error) {
+    console.error('Error fetching graph data:', error.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 
 
 // Root endpoint
