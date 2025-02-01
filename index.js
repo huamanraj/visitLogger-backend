@@ -3,11 +3,7 @@ import dotenv from 'dotenv';
 import { Client, Databases, ID, Query } from 'node-appwrite';
 import cors from 'cors';
 
-
 dotenv.config();
-
-
-
 
 // Initialize Appwrite client
 const client = new Client()
@@ -31,38 +27,24 @@ app.use((req, res, next) => {
   next();
 });
 
-
-
-// API endpoint to track user data
+// API endpoint to track user data (session time removed)
 app.post('/track', async (req, res) => {
-  let { scriptId, userId, ipAddress, timestamp, userAgent, timeSpent, city, latitude, longitude, pageViews } = req.body;
+  let { scriptId, userId, ipAddress, timestamp, userAgent, city, latitude, longitude, pageViews } = req.body;
 
-  if (!scriptId || !userId || !ipAddress || !timestamp || !userAgent || timeSpent === undefined) {
+  if (!scriptId || !userId || !ipAddress || !timestamp || !userAgent) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
   try {
-    timeSpent = timeSpent ? timeSpent.toString() : "0";
     latitude = latitude ? latitude.toString() : "0";
     longitude = longitude ? longitude.toString() : "0";
-    pageViews = pageViews ? pageViews.toString() : "1"; // Handle pageViews
+    pageViews = pageViews ? pageViews.toString() : "1";
 
     await databases.createDocument(
       process.env.APPWRITE_DATABASE_ID,
       process.env.APPWRITE_COLLECTION_ID,
       ID.unique(),
-      {
-        scriptId,
-        userId,
-        ipAddress,
-        timestamp,
-        userAgent,
-        timeSpent,
-        city,
-        latitude,
-        longitude,
-        pageViews 
-      }
+      { scriptId, userId, ipAddress, timestamp, userAgent, city, latitude, longitude, pageViews }
     );
 
     res.status(200).json({ message: 'Tracking data saved successfully' });
@@ -72,9 +54,7 @@ app.post('/track', async (req, res) => {
   }
 });
 
-
-
-
+// Tracking script that sends data instantly
 app.get('/track.js', async (req, res) => {
   const { scriptId, userId } = req.query;
 
@@ -88,12 +68,9 @@ app.get('/track.js', async (req, res) => {
       const scriptId = "${scriptId}";
       const userId = "${userId}";
       const ipAddress = window.location.hostname;
-      const startTime = Date.now();
       let locationData = { city: "Unknown", latitude: "0", longitude: "0" };
-      let pageViews = 1; // Initialize pageViews
 
-      // Fetch location data immediately when script loads
-      async function initializeLocation() {
+      async function sendTrackingData() {
         try {
           const response = await fetch("https://ipapi.co/json/");
           const data = await response.json();
@@ -105,41 +82,32 @@ app.get('/track.js', async (req, res) => {
         } catch (error) {
           console.error("Error fetching location:", error);
         }
-      }
 
-      // Initialize location data when script loads
-      initializeLocation();
-
-      window.addEventListener("beforeunload", function() {
-        const endTime = Date.now();
-        const timeSpent = ((endTime - startTime) / 1000).toFixed(2);
-
-        const data = {
+        const trackingData = {
           scriptId,
           userId,
           ipAddress,
           timestamp: new Date().toISOString(),
           userAgent: navigator.userAgent,
-          timeSpent: timeSpent.toString(),
           city: locationData.city,
           latitude: locationData.latitude,
           longitude: locationData.longitude,
-          pageViews: pageViews.toString() // Add pageViews to the data
+          pageViews: "1"
         };
 
-        navigator.sendBeacon(
-          "https://visitloggerbackend.vercel.app/track",
-          JSON.stringify(data)
-        );
-      });
+        fetch("https://visitloggerbackend.vercel.app/track", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(trackingData)
+        }).catch(console.error);
+      }
+
+      sendTrackingData();
     })();
   `);
 });
 
-
-
-
-
+// Create a new tracking script
 app.post('/script', async (req, res) => {
   const { userId, scriptName } = req.body;
 
@@ -148,17 +116,9 @@ app.post('/script', async (req, res) => {
   }
 
   try {
-
-
-    // Generate a unique scriptId
     const scriptId = ID.unique();
-
-    // Generate the script URL
     const scriptUrl = `https://visitloggerbackend.vercel.app/track.js?scriptId=${scriptId}&userId=${userId}`;
 
-
-
-    // Save script metadata in Appwrite
     await databases.createDocument(
       process.env.APPWRITE_DATABASE_ID,
       process.env.APPWRITE_SCRIPTS_COLLECTION_ID,
@@ -166,15 +126,12 @@ app.post('/script', async (req, res) => {
       { userId, scriptName, scriptId, scriptUrl }
     );
 
-    // Send the response with script URL
     res.status(200).json({ scriptUrl, scriptId, scriptName, userId });
   } catch (error) {
     console.error('Error creating script:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
-
-
 
 // Get analytics for a specific script
 app.get('/analytics/:scriptId', async (req, res) => {
@@ -202,11 +159,8 @@ app.get('/analytics/:scriptId', async (req, res) => {
   }
 });
 
-
-
+// Root endpoint
 app.get('/', async (req, res) => {
-
-  // Send a simple HTML response
   res.send(`
     <!DOCTYPE html>
     <html lang="en">
@@ -217,14 +171,12 @@ app.get('/', async (req, res) => {
       </head>
       <body>
         <h1>Welcome to the Visit Logger Backend!</h1>
-        <p>You have reached the home page of the backend. This is just a simple message.</p>
-                <p>For more information, visit my <a href="https://aman-raj.xyz" target="_blank">contact page</a>.</p>
-
+        <p>You have reached the home page of the backend.</p>
+        <p>For more information, visit my <a href="https://aman-raj.xyz" target="_blank">contact page</a>.</p>
       </body>
     </html>
   `);
 });
-
 
 // Start the server
 app.listen(port, () => {
