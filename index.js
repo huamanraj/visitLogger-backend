@@ -3,11 +3,13 @@ import dotenv from 'dotenv';
 import { Client, Databases, ID, Query } from 'node-appwrite';
 import cors from 'cors';
 import moment from 'moment';
+import rateLimit from 'express-rate-limit';
+import helmet from 'helmet';
+import timeout from 'connect-timeout';
 
 dotenv.config();
 
-
-// Initialize Appwrite client
+// Configure Appwrite client with environment credentials
 const client = new Client()
   .setEndpoint(process.env.APPWRITE_ENDPOINT)
   .setProject(process.env.APPWRITE_PROJECT_ID)
@@ -22,6 +24,7 @@ const port = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
+// Configure CORS and security headers middleware
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
@@ -29,8 +32,42 @@ app.use((req, res, next) => {
   next();
 });
 
-// API endpoint to track user data (session time removed)
-app.post('/track', async (req, res) => {
+// Global rate limiting configuration - 100 requests per 15 minutes
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000, // Limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply rate limiter to all routes
+app.use(limiter);
+
+// Endpoint-specific rate limiting - 10 requests per minute for tracking endpoints
+const trackLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10, // Limit each IP to 10 requests per minute
+  message: 'Too many tracking requests from this IP, please try again later.'
+});
+
+// Security middleware
+app.use(helmet()); // Adds various HTTP headers for security
+
+// Request payload validation middleware
+const validateInput = (req, res, next) => {
+  const { scriptId, userId, ipAddress } = req.body;
+
+  // Basic input validation
+  if (scriptId && scriptId.length > 100) return res.status(400).json({ error: 'Invalid scriptId' });
+  if (userId && userId.length > 100) return res.status(400).json({ error: 'Invalid userId' });
+  if (ipAddress && ipAddress.length > 50) return res.status(400).json({ error: 'Invalid ipAddress' });
+
+  next();
+};
+
+// POST /track - Record visitor analytics data
+app.post('/track', trackLimiter, validateInput, async (req, res) => {
   let { scriptId, userId, ipAddress, timestamp, userAgent, city, latitude, longitude, pageViews } = req.body;
 
   if (!scriptId || !userId || !ipAddress || !timestamp || !userAgent) {
@@ -56,8 +93,8 @@ app.post('/track', async (req, res) => {
   }
 });
 
-// Tracking script that sends data instantly
-app.get('/track.js', async (req, res) => {
+// GET /track.js - Serve client-side tracking script
+app.get('/track.js', trackLimiter, async (req, res) => {
   const { scriptId, userId } = req.query;
 
   if (!scriptId || !userId) {
@@ -109,7 +146,7 @@ app.get('/track.js', async (req, res) => {
   `);
 });
 
-// Create a new tracking script
+// POST /script - Generate new tracking script configuration
 app.post('/script', async (req, res) => {
   const { userId, scriptName } = req.body;
 
@@ -135,7 +172,7 @@ app.post('/script', async (req, res) => {
   }
 });
 
-// Get analytics for a specific script
+// GET /analytics/:scriptId - Retrieve paginated analytics data
 app.get('/analytics/:scriptId', async (req, res) => {
   const { scriptId } = req.params;
   const { page = 1, limit = 10 } = req.query; // Get page & limit from query params, default to 10 per page
@@ -170,6 +207,7 @@ app.get('/analytics/:scriptId', async (req, res) => {
   }
 });
 
+// GET /analytics/graph/:scriptId - Generate time-series analytics data
 app.get('/analytics/graph/:scriptId', async (req, res) => {
   const { scriptId } = req.params;
   const days = parseInt(req.query.days) || 5; // Convert to number and default to 5
@@ -225,9 +263,7 @@ app.get('/analytics/graph/:scriptId', async (req, res) => {
   }
 });
 
-
-
-// Root endpoint
+// GET / - Health check and documentation endpoint
 app.get('/', async (req, res) => {
   res.send(`
     <!DOCTYPE html>
@@ -246,7 +282,25 @@ app.get('/', async (req, res) => {
   `);
 });
 
-// Start the server
+// Security: Cache control headers
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  next();
+});
+
+// Global error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: 'Something went wrong!' });
+});
+
+// Request timeout configuration - 5 seconds
+app.use(timeout('5s'));
+
+// Security: JSON payload size limitation - 10KB
+app.use(express.json({ limit: '10kb' }));
+
+// Initialize server on specified port
 app.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}`);
+  console.log(`Server running in ${process.env.NODE_ENV} mode on port ${port}`);
 });
