@@ -136,28 +136,38 @@ app.post('/script', async (req, res) => {
 // Get analytics for a specific script
 app.get('/analytics/:scriptId', async (req, res) => {
   const { scriptId } = req.params;
+  const { page = 1, limit = 10 } = req.query; // Get page & limit from query params, default to 10 per page
 
   if (!scriptId) {
     return res.status(400).json({ error: 'scriptId is required' });
   }
 
   try {
+    const offset = (page - 1) * limit; // Calculate offset for pagination
+
     const data = await databases.listDocuments(
       process.env.APPWRITE_DATABASE_ID,
       process.env.APPWRITE_COLLECTION_ID,
-      [Query.equal('scriptId', scriptId)]
+      [
+        Query.equal('scriptId', scriptId),
+        Query.orderDesc('$createdAt'), // Sort by latest entries first
+        Query.limit(parseInt(limit)), // Fetch only `limit` entries
+        Query.offset(parseInt(offset)) // Skip past entries based on page number
+      ]
     );
 
-    if (data.documents.length === 0) {
-      return res.status(404).json({ message: 'No data found for the given scriptId' });
-    }
-
-    res.status(200).json(data.documents);
+    res.status(200).json({
+      documents: data.documents,
+      total: data.total, // Total documents for pagination info
+      page: parseInt(page),
+      limit: parseInt(limit)
+    });
   } catch (error) {
     console.error('Error fetching analytics:', error.message);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
 
 // Root endpoint
 app.get('/', async (req, res) => {
