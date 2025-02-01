@@ -172,14 +172,18 @@ app.get('/analytics/:scriptId', async (req, res) => {
 
 app.get('/analytics/graph/:scriptId', async (req, res) => {
   const { scriptId } = req.params;
-  const { days = 1 } = req.query;
+  const days = parseInt(req.query.days) || 5; // Convert to number and default to 5
 
   if (!scriptId) {
     return res.status(400).json({ error: 'scriptId is required' });
   }
 
   try {
-    const daysAgo = moment().subtract(days, 'days').toISOString();
+    // Calculate start date for the period we want to show
+    const daysAgo = moment()
+      .startOf('day')
+      .subtract(days - 1, 'days')
+      .toISOString();
 
     const data = await databases.listDocuments(
       process.env.APPWRITE_DATABASE_ID,
@@ -187,21 +191,29 @@ app.get('/analytics/graph/:scriptId', async (req, res) => {
       [
         Query.equal('scriptId', scriptId),
         Query.orderDesc('$createdAt'),
-        Query.greaterThan('$createdAt', daysAgo),
+        Query.greaterThanEqual('$createdAt', daysAgo),
       ]
     );
 
+    // Create an array of all dates in the range
+    const dateRange = [];
+    for (let i = days - 1; i >= 0; i--) {
+      dateRange.push(
+        moment().subtract(i, 'days').format('YYYY-MM-DD')
+      );
+    }
+
     // Group by day and count visitors
     const groupedData = data.documents.reduce((acc, entry) => {
-      const date = new Date(entry.timestamp).toLocaleDateString();
+      const date = moment(entry.timestamp).format('YYYY-MM-DD');
       acc[date] = (acc[date] || 0) + 1;
       return acc;
     }, {});
 
-    // Prepare the response with just the day and count of visitors
-    const result = Object.keys(groupedData).map(date => ({
+    // Fill in missing dates with zero counts
+    const result = dateRange.map(date => ({
       date,
-      count: groupedData[date],
+      count: groupedData[date] || 0,
     }));
 
     res.status(200).json({
