@@ -59,7 +59,10 @@ const trackLimiter = rateLimit({
 });
 
 // Security middleware
-app.use(helmet()); // Adds various HTTP headers for security
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+})); // Adds various HTTP headers for security
 
 // Request payload validation middleware
 const validateInput = (req, res, next) => {
