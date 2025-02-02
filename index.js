@@ -112,7 +112,11 @@ app.get('/track.js', trackLimiter, async (req, res) => {
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+  res.setHeader("Content-Security-Policy", "default-src * 'self' 'unsafe-inline' 'unsafe-eval' data: blob:");
+
   res.setHeader("Content-Type", "application/javascript");
+
+  res.send(`(function() { console.log("Tracking script loaded successfully!"); })();`);
   res.send(`
     (function() {
       const scriptId = "${scriptId}";

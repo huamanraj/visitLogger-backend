@@ -17,6 +17,10 @@
             "source": "/(.*)",
             "headers": [
                 {
+                    "key": "Content-Encoding",
+                    "value": "identity"
+                },
+                {
                     "key": "Access-Control-Allow-Origin",
                     "value": "*"
                 },
