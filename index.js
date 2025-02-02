@@ -111,19 +111,22 @@ app.get('/track.js', trackLimiter, async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");  
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+  res.setHeader("Cross-Origin-Embedder-Policy", "credentialless");
   res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
-  res.setHeader("Content-Security-Policy", "default-src * 'self' 'unsafe-inline' 'unsafe-eval' data: blob:");
+  res.setHeader("Content-Security-Policy", "script-src * 'unsafe-inline' 'unsafe-eval'; default-src * data: blob:;");
 
   res.setHeader("Content-Type", "application/javascript");
 
-  res.send(`(function() { console.log("Tracking script loaded successfully!"); })();`);
+
   res.send(`
     (function() {
       const scriptId = "${scriptId}";
       const userId = "${userId}";
       const ipAddress = window.location.hostname;
       let locationData = { city: "Unknown", latitude: "0", longitude: "0" };
-
+      console.log("Tracking script loaded successfully!")
       async function sendTrackingData() {
         try {
           const response = await fetch("https://ipapi.co/json/");
