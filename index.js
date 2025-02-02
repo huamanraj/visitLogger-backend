@@ -132,7 +132,7 @@ app.get('/track.js', trackLimiter, async (req, res) => {
       console.log("visitlogger.vercel.app");
       async function sendTrackingData() {
         try {
-          const response = await fetch("https://ipapi.co/json/");
+          const response = await fetch("https://freegeoip.app/json/");
           const data = await response.json();
           locationData = {
             city: data.city || "Unknown",
@@ -142,6 +142,7 @@ app.get('/track.js', trackLimiter, async (req, res) => {
         } catch (error) {
           console.error("Error fetching location:", error);
         }
+
 
         const trackingData = {
           scriptId,
