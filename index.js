@@ -111,7 +111,7 @@ app.post('/track', trackLimiter, validateInput, async (req, res) => {
   }
 });
 
-// GET /track.js - Serve client-side tracking script
+
 app.get('/track.js', trackLimiter, async (req, res) => {
   const { scriptId, userId } = req.query;
 
@@ -119,7 +119,7 @@ app.get('/track.js', trackLimiter, async (req, res) => {
     return res.status(400).send("// Missing scriptId or userId");
   }
 
-  // Remove manual header settings; headers will be applied via vercel.json
+  
   res.setHeader("Content-Type", "application/javascript");
 
   res.send(`
@@ -128,7 +128,8 @@ app.get('/track.js', trackLimiter, async (req, res) => {
       const userId = "${userId}";
       const ipAddress = window.location.hostname;
       let locationData = { city: "Unknown", latitude: "0", longitude: "0" };
-      console.log("Tracking script loaded successfully!")
+      console.log("Using visitLogger for web analytics!!")
+      console.log("visitlogger.vercel.app");
       async function sendTrackingData() {
         try {
           const response = await fetch("https://ipapi.co/json/");
