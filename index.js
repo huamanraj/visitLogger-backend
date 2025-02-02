@@ -26,17 +26,6 @@ app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE'], allowedHe
 
 app.use(express.json());
 app.options('*', cors());
-// Configure CORS and security headers middleware
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(204); // Respond to preflight request
-  }
-  next();
-});
-
 
 // Global rate limiting configuration - 100 requests per 15 minutes
 const limiter = rateLimit({
@@ -119,17 +108,8 @@ app.get('/track.js', trackLimiter, async (req, res) => {
     return res.status(400).send("// Missing scriptId or userId");
   }
 
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");  
-  res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
-  res.setHeader("Cross-Origin-Embedder-Policy", "credentialless");
-  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
-  res.setHeader("Content-Security-Policy", "script-src * 'unsafe-inline' 'unsafe-eval'; default-src * data: blob:;");
-
+  // Remove manual header settings; headers will be applied via vercel.json
   res.setHeader("Content-Type", "application/javascript");
-
 
   res.send(`
     (function() {

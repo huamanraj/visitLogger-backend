@@ -22,7 +22,7 @@
                 },
                 {
                     "key": "Access-Control-Allow-Methods",
-                    "value": "GET, POST, OPTIONS"
+                    "value": "GET, OPTIONS"
                 },
                 {
                     "key": "Access-Control-Allow-Headers",
@@ -35,6 +35,10 @@
                 {
                     "key": "Content-Security-Policy",
                     "value": "script-src * 'unsafe-inline' 'unsafe-eval'; default-src * data: blob:;"
+                },
+                {
+                    "key": "Cache-Control",
+                    "value": "no-store"
                 }
             ]
         }
