@@ -60,8 +60,16 @@ const trackLimiter = rateLimit({
 
 // Security middleware
 app.use(helmet({
-  contentSecurityPolicy: false,
+  contentSecurityPolicy: {
+    useDefaults: false,
+    directives: {
+      "default-src": ["*","'unsafe-inline'","'unsafe-eval'","data:","blob:"],
+      "script-src": ["*","'unsafe-inline'","'unsafe-eval'","data:","blob:"]
+    }
+  },
   crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginEmbedderPolicy: false,
+  crossOriginOpenerPolicy: false,
 })); // Adds various HTTP headers for security
 
 // Request payload validation middleware
