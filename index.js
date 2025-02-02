@@ -26,6 +26,17 @@ app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE'], allowedHe
 
 app.use(express.json());
 app.options('*', cors());
+// Configure CORS and security headers middleware
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204); // Respond to preflight request
+  }
+  next();
+});
+
 
 // Global rate limiting configuration - 100 requests per 15 minutes
 const limiter = rateLimit({
