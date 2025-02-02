@@ -52,8 +52,9 @@ app.use(limiter);
 
 // Endpoint-specific rate limiting - 10 requests per minute for tracking endpoints
 const trackLimiter = rateLimit({
+  keyGenerator: (req) => req.body.userId || req.ip,
   windowMs: 60 * 1000, // 1 minute
-  max: 10, // Limit each IP to 10 requests per minute
+  max: 100, // Limit each IP to 10 requests per minute
   message: 'Too many tracking requests from this IP, please try again later.'
 });
 
